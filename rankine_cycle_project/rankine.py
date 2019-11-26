@@ -4,21 +4,28 @@ from seuif97 import *
 import pandas as pd
 import numpy as np
 
-def calculate_efficiency(T1 ,T4):
+def modified_rankine(T1 ,T4, P1, P2, P3, P5, P6):
     # State 1 is superheated vapor at 8MPa, 480C.
     p1=8.0
-    t1= T1
-    h1 = pt2h(p1,t1)
-    s1 = pt2s(p1,t1)
+
+    if T1:
+        t1 = T1
+        h1 = pt2h(p1,t1)
+        s1 = pt2s(p1,t1)
+
+    else:
+        t1 = px2t(p1, 1)
+        h1 = px2h(p1, 1)          # h1 = 2758.0    From table A-3  kj/kg
+        s1 = px2s(p1, 1)
 
     # State 2 is fixed by p2 =2.0MPa and the specific entropy s2, which is the same as that of state 1
-    p2= 6.0
+    p2= P2
     s2=s1
     h2 = ps2h(p2,s2)
     t2=ps2t(p2,s2)
 
     # State 3  is fixed by p2 =0.7MPa and the specific entropy s2, which is the same as that of state 1
-    p3= 4.0
+    p3= P3
     s3=s1
     h3 = ps2h(p3,s3)
     t3=ps2t(p3,s3)
@@ -30,13 +37,13 @@ def calculate_efficiency(T1 ,T4):
     s4 =pt2s(p4,t4)
 
     # State 5 : p5 =0.3MPa and s5 = s4
-    p5= 2.0
+    p5= P5
     s5=s4
     h5 =ps2h(p5,s5)
     t5=ps2t(p5,s5)
 
     # State 6: p6=0.008MPA, s6= s4
-    p6= 0.008
+    p6= P6
     s6=s4
     h6 =ps2h(p6,s6)
     t6 =ps2t(p6,s6)
@@ -104,7 +111,7 @@ def calculate_efficiency(T1 ,T4):
     ydash = (h11-h10)/(h2-h12)                          # the fraction of the total flow diverted to the closed heater
     ydashdash = ((1-ydash)*h8+ydash*h13-h9)/(h8-h5)     # the fraction of the total flow diverted to the open heater
     print(ydash, ydashdash)
-    mdot = 113.37
+    # mdot = 113.37
 
     # Part(a)
     wt1dot = (h1-h2) + (1-ydash)*(h2-h3)                       # The work developed by the first turbine per unit of mass entering in kj/kg
@@ -123,7 +130,7 @@ def calculate_efficiency(T1 ,T4):
 
     return(efficiency, work_output)
 
-def ideal_turbine(T1=None, P1=None,P2=None):
+def ideal_rankine(T1=None, P1=None,P2=None, irreversible=None):
     # x: steam quality
 
     # mdot = 113.37
@@ -148,13 +155,8 @@ def ideal_turbine(T1=None, P1=None,P2=None):
 
     # State  2 ,p2=0.008
     p2 = P2 # in MPa
-    s2 = s1
-    t2 = ps2t(p2, s2)
-    h2 = ps2h(p2, s2)
-    # print("T2:{}, P2:{}, H2:{}, S2:{}".format(t2,p2,h2, s2))
 
-
-    # State 3 is saturated liquid at 0.008 MPa
+    # State 3 is saturated liquid
     p3 = p2
     t3 = px2t(p3, 0)
     h3 = px2h(p3, 0)  # kj/kg
@@ -163,9 +165,39 @@ def ideal_turbine(T1=None, P1=None,P2=None):
 
     # State 4
     p4 = p1
-    s4 = s3
-    t4 = ps2t(p4,s4)
-    h4 = pt2h(p4, t4)
+
+    if irreversible:
+        # state 2
+        s2s = s1
+        h2s=ps2h(p2,s2s)
+        t2s=ps2t(p2,s2s)
+
+        etat_t=0.85
+        h2=h1-etat_t*(h1-h2s)
+        t2 =ph2t(p2,h2)
+        s2 =ph2s(p2,h2)
+
+        # state 4
+        s4s=s3
+        h4s =ps2h(p4,s4s)
+        t4s =ps2t(p4,s4s)
+        etat_p=0.85
+        h4=h3+(h4s-h3)/etat_p
+        t4 =ph2t(p4,h4)
+        s4 =ph2s(p4,h4)
+
+    else:
+        # state 2
+        s2 = s1
+        t2 = ps2t(p2, s2)
+        h2 = ps2h(p2, s2)
+
+        # state 4
+        s4 = s3
+        t4 = ps2t(p4,s4)
+        h4 = pt2h(p4, t4)
+    # print("T2:{}, P2:{}, H2:{}, S2:{}".format(t2,p2,h2, s2))
+
     # print("T4:{}, P4:{}, H4:{}, S4:{}".format(t4,p4,h4, s4))
     # t4 = ps2h(p4, s4)
 
@@ -203,8 +235,111 @@ def ideal_turbine(T1=None, P1=None,P2=None):
     work_output = (wtdot-wpdot)*mdot
     return t1, efficiency, mdot, work_output
 
-power_required = 1.25*15516
-print("Power requirement: ", power_required)
+def reheat(T1=None, P1=None, P4= None, irreversible=None):
+    p1 = P1
+
+    # superheated
+    if T1!=None:
+        t1 = T1
+        h1 = pt2h(p1,t1)
+        s1 = pt2s(p1,t1)
+
+    else:
+        t1 = px2t(p1, 1)
+        h1 = px2h(p1, 1)          # h1 = 2758.0    From table A-3  kj/kg
+        s1 = px2s(p1, 1)          # s1 = 5.7432    From table A-3  kj/kg.k
+
+    # State  2
+    p2 = p1/4 # in MPa
+
+    # state5 = [p2, px2t(p3,0), px2h(p3,0), px2s(p3,0)]
+    # State 4
+    p4 = P4
+
+    if irreversible:
+        # state 2
+        s2s=s1
+        h2s =ps2h(p2,s2s)
+        etat1=0.85
+        h2=h1-etat1*(h1-h2s)
+        s2=ph2s(p2,h2)
+        t2=ph2t(p2,h2)
+
+        # state 3
+        t3 = t1-20
+        p3 = p2
+        h3 =pt2h(p3,t3)
+        s3 =pt2s(p3,t3)
+
+        # state 4
+        s4s=s3
+        h4s =ps2h(p4,s4s)
+        etat2=etat1
+        h4=h3-etat2*(h3-h4s)
+        s4 =ph2s(p4,h4)
+        t4 =ph2t(p4,h4)
+
+    else:
+        # state 2
+        s2 = s1
+        t2 = ps2t(p2, s2)
+        h2 = ps2h(p2, s2)
+
+        # state 3
+        t3 = t1-20
+        p3 = p2
+        h3 =pt2h(p3,t3)
+        s3 =pt2s(p3,t3)
+
+        # state 4
+        s4 = s3
+        t4 = ps2t(p4,s4)
+        h4 = ps2h(p4, s4)
+
+    p5 = p4
+    t5 = px2t(p5, 0)
+    h5 = px2h(p5, 0)  # kj/kg
+    s5 = px2s(p5, 0)
+
+    p6 = p1
+    s6=s5
+    h6 =ps2h(p6,s6)
+    t6=ps2t(p6,s6)
+
+    # Part(a)
+    # Mass and energy rate balances for control volumes
+    # around the turbine and pump give, respectively
+    df = pd.DataFrame(columns=["Temperature (C)","Pressure (MPa)","Enthalpy (kJ/kg)","Entropy (kJ/kg*K)"])
+
+    df.loc[1] = t1,p1,h1,s1
+    df.loc[2] = t2,p2,h2,s2
+    df.loc[3] = t3,p3,h3,s3
+    df.loc[4] = t4,p4,h4,s4
+    df.loc[5] = t5,p5,h5,s5
+    df.loc[6] = t6,p6, h6,s6
+
+    print(df)
+    # turbine
+    wtdot = (h1-h2)+(h3-h4)
+    # print("Power from turbine(kJ/kg): ", wtdot)
+    # print("Power from turbine(kwh/kg): ", wtdot)
+    # print("Power from turbine(kJ/s (kW)): ", wtdot*mdot)
+
+    # pump
+    wpdot = (h6-h5)
+    # print("Power into pump: ", wpdot)
+    # print("net work", (wtdot-wpdot)*mdot)
+    qindot = (h1-h6)+(h3-h2)
+    print("Qin: ", qindot)
+    Wcycledot = 25.0    # the net power output of the cycle in MW
+
+    mdot = (Wcycledot*10**3)/((h1-h2)+(h3-h4)-(h6-h5))
+    # thermal efficiency
+    eta = (wtdot-wpdot)/(qindot)
+    efficiency = eta*100
+    work_output = (wtdot-wpdot)*mdot
+    return t1, efficiency, mdot, work_output
+
 #
 # T1= 400
 # print(" \n\n\nIdeal Basic Rankine\n")
@@ -225,18 +360,82 @@ print("Power requirement: ", power_required)
 #     efficiency, work_output = calculate_efficiency(T1,T4)
 #     print("Efficiency: {}%, Work output: {} kW".format(efficiency, work_output))
 
-params = {"T1":np.linspace(400,600,20), "P1":np.linspace(8,12,20),"P2":np.flip(np.linspace(0.001,0.01,20))}
+power_required = 1.25*15516
+print("Power requirement: ", power_required)
 
-new_df = pd.DataFrame(columns=['T1 (Celsius)','P1 (MPa)','P2 (MPa)', 'Efficiency (%)','Mass flow rate (kg/s)','Net Work (kW)'])
+grid_size = 20
 
-for i in range(20):
-    T1 = params["T1"][i]
-    # T1 = None
-    P1 = params["P1"][i]
-    P2 = params["P2"][i]
-    T1, efficiency, mdot , work_output = ideal_turbine( T1, P1,P2)
-    new_df.loc[i] = [T1,P1,P2,efficiency,mdot, work_output]
+params = {"T1":np.linspace(400,740,grid_size) , "T4":np.linspace(300,640,grid_size),"p_initial":np.linspace(8,12,grid_size),"p_final":np.flip(np.linspace(0.001,0.01,20))}
 
-new_df = new_df.round(3)
-new_df.to_csv("ideal_rankine_supercritical.csv")
-print(new_df)
+supercritical = False
+mode = "reheat"
+
+irreversible = True
+
+placeholder1 = "supercritical" if supercritical else "no_supercritical"
+placeholder2 = "irreversible" if irreversible else "no_irreversibility"
+
+if mode=="ideal":
+    ideal_df = pd.DataFrame(columns=['T1 (Celsius)','P1 (MPa)','P2 (MPa)', 'Efficiency (%)','Mass flow rate (kg/s)','Net Work (kW)'])
+    for i in range(grid_size):
+        if supercritical:
+            T1 = params["T1"][i]
+        else:
+            T1 = None
+        P1 = params["p_initial"][i]
+        P2 = params["p_final"][i]
+        T1, efficiency, mdot , work_output = ideal_rankine( T1, P1,P2, irreversible=irreversible)
+        ideal_df.loc[i] = [T1,P1,P2,efficiency,mdot, work_output]
+
+    ideal_df = ideal_df.round(3)
+
+    if supercritical:
+        save_path = "ideal_rankine_{}_{}.csv".format(placeholder1, placeholder2)
+    else:
+        save_path = "ideal_rankine_{}_{}.csv".format(placeholder1, placeholder2)
+
+    ideal_df.to_csv(save_path)
+
+    print(ideal_df)
+
+elif mode == "reheat":
+    reheat_df = pd.DataFrame(columns=['T1 (Celsius)','P1 (MPa)','P4 (MPa)', 'Efficiency (%)','Mass flow rate (kg/s)','Net Work (kW)'])
+    for i in range(grid_size):
+        if supercritical:
+            T1 = params["T1"][i]
+
+        else:
+            T1 = None
+        P1 = params["p_initial"][i]
+        P4 = params["p_final"][i]
+        T1, efficiency, mdot , work_output = reheat(T1=T1, P1=P1, P4= P4, irreversible=irreversible)
+        reheat_df.loc[i] = [T1,P1,P4,efficiency,mdot, work_output]
+
+    if supercritical:
+        save_path = "reheat_{}_{}.csv".format(placeholder1, placeholder2)
+    else:
+        save_path = "reheat_{}_{}.csv".format(placeholder1, placeholder2)
+
+    print(reheat_df)
+    reheat_df.to_csv(save_path)
+#
+# else:
+#     modified_df = pd.DataFrame(columns=['T1 (Celsius)','P1 (MPa)','P2 (MPa)', 'Efficiency (%)','Mass flow rate (kg/s)','Net Work (kW)'])
+#     for i in range(grid_size):
+#         if supercritical:
+#             T1 = params["T1"][i]
+#         else:
+#             T1 = None
+#         P1 = params["p_initial"][i]
+#         P2 = params["p_final"][i]
+#         T1, efficiency, mdot , work_output = modified_rankine( T1, P1,P2)
+#         ideal_df.loc[i] = [T1,P1,P2,efficiency,mdot, work_output]
+#
+#     modified_df = modified_df.round(3)
+#
+#     if supercritical:
+#         save_path = "modified_rankine_supercritical.csv"
+#     else:
+#         save_path = "modified_rankine_no_supercritical.csv"
+#
+#     ideal_df.to_csv(save_path)
