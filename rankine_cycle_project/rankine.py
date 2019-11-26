@@ -36,7 +36,7 @@ def calculate_efficiency(T1 ,T4):
     t5=ps2t(p5,s5)
 
     # State 6: p6=0.008MPA, s6= s4
-    p6= 15.79/10
+    p6= 0.008
     s6=s4
     h6 =ps2h(p6,s6)
     t6 =ps2t(p6,s6)
@@ -123,16 +123,16 @@ def calculate_efficiency(T1 ,T4):
 
     return(efficiency, work_output)
 
-def ideal_turbine(T1=None):
+def ideal_turbine(T1=None, P1=None,P2=None):
     # x: steam quality
 
-    mdot = 113.37
+    # mdot = 113.37
     # power requirement: 4500 kwh
 
     # t1 = 295 # celsius
     # p1 = 8.0
 
-    p1 = 8.0
+    p1 = P1
 
     # superheated
     if T1!=None:
@@ -147,7 +147,7 @@ def ideal_turbine(T1=None):
     # print("T1:{}, P1:{}, H1:{}, S1:{}".format(t1,p1,h1, s1))
 
     # State  2 ,p2=0.008
-    p2 = 15.79/10 # in MPa
+    p2 = P2 # in MPa
     s2 = s1
     t2 = ps2t(p2, s2)
     h2 = ps2h(p2, s2)
@@ -179,45 +179,64 @@ def ideal_turbine(T1=None):
     df.loc[3] = t3,p3,h3,s3
     df.loc[4] = t4,p4,h4,s4
 
-    print(df)
+    # print(df)
     # turbine
     wtdot = h1 - h2
-    print("Power from turbine(kJ/kg): ", wtdot)
+    # print("Power from turbine(kJ/kg): ", wtdot)
     # print("Power from turbine(kwh/kg): ", wtdot)
-    print("Power from turbine(kJ/s (kW)): ", wtdot*mdot)
+    # print("Power from turbine(kJ/s (kW)): ", wtdot*mdot)
 
     # pump
     wpdot = h4 - h3
-    print("Power into pump: ", wpdot)
-    print("net work", (wtdot-wpdot)*mdot)
+    # print("Power into pump: ", wpdot)
+    # print("net work", (wtdot-wpdot)*mdot)
     # The rate of heat transfer to the working fluid as it passes
     # through the boiler is determined using mass and energy rate balances as
     qindot = h1-h4
+    print("Qin: ", qindot)
+    Wcycledot = 25.0    # the net power output of the cycle in MW
+    mdot = (Wcycledot*10**3)/(wtdot-wpdot)       # mass flow rate in kg/s
 
     # thermal efficiency
     eta = (wtdot-wpdot)/qindot
     efficiency = eta*100
     work_output = (wtdot-wpdot)*mdot
-    return efficiency, work_output
+    return t1, efficiency, mdot, work_output
 
 power_required = 1.25*15516
 print("Power requirement: ", power_required)
+#
+# T1= 400
+# print(" \n\n\nIdeal Basic Rankine\n")
+# efficiency, work_output = ideal_turbine(T1)
+# print("Efficiency: {}%, Work output: {} kW".format(efficiency, work_output))
+#
+# temp_ranges = [[295.06,280],
+#             # [740,640]
+#             ]
+# t1_ranges = [400,740]
+# t4_ranges = [280,700]
+#
+# print("Modified Rankine\n")
+# for i in temp_ranges:
+#     T1 = i[0]
+#     T4 = i[1]
+#
+#     efficiency, work_output = calculate_efficiency(T1,T4)
+#     print("Efficiency: {}%, Work output: {} kW".format(efficiency, work_output))
 
-T1= 295.06
-print(" \n\n\nIdeal Basic Rankine\n")
-efficiency, work_output = ideal_turbine(T1)
-print("Efficiency: {}%, Work output: {} kW".format(efficiency, work_output))
+params = {"T1":np.linspace(400,600,20), "P1":np.linspace(8,12,20),"P2":np.flip(np.linspace(0.001,0.01,20))}
 
-temp_ranges = [[295.06,280],
-            # [740,640]
-            ]
-t1_ranges = [400,740]
-t4_ranges = [280,700]
+new_df = pd.DataFrame(columns=['T1 (Celsius)','P1 (MPa)','P2 (MPa)', 'Efficiency (%)','Mass flow rate (kg/s)','Net Work (kW)'])
 
-print("Modified Rankine\n")
-for i in temp_ranges:
-    T1 = i[0]
-    T4 = i[1]
+for i in range(20):
+    T1 = params["T1"][i]
+    # T1 = None
+    P1 = params["P1"][i]
+    P2 = params["P2"][i]
+    T1, efficiency, mdot , work_output = ideal_turbine( T1, P1,P2)
+    new_df.loc[i] = [T1,P1,P2,efficiency,mdot, work_output]
 
-    efficiency, work_output = calculate_efficiency(T1,T4)
-    print("Efficiency: {}%, Work output: {} kW".format(efficiency, work_output))
+new_df = new_df.round(3)
+new_df.to_csv("ideal_rankine_supercritical.csv")
+print(new_df)
