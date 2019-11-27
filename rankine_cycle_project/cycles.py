@@ -1,16 +1,10 @@
+# code modified from https://github.com/PySEE/PyRankine
+
 from seuif97 import *
 import pandas as pd
 import numpy as np
 
-def ideal_rankine(T1=None, P1=None,P2=None, irreversible=None):
-    # x: steam quality
-
-    # mdot = 113.37
-    # power requirement: 4500 kwh
-
-    # t1 = 295 # celsius
-    # p1 = 8.0
-
+def basic_rankine(T1=None, P1=None,P2=None, irreversible=None):
     p1 = P1
 
     # superheated
@@ -105,7 +99,7 @@ def ideal_rankine(T1=None, P1=None,P2=None, irreversible=None):
     eta = (wtdot-wpdot)/qindot
     efficiency = eta*100
     work_output = (wtdot-wpdot)*mdot
-    return t1, efficiency, mdot, work_output
+    return df, t1, efficiency, mdot, work_output
 
 
 def reheat(T1=None, P1=None, P4= None, irreversible=None):
@@ -211,7 +205,7 @@ def reheat(T1=None, P1=None, P4= None, irreversible=None):
     eta = (wtdot-wpdot)/(qindot)
     efficiency = eta*100
     work_output = (wtdot-wpdot)*mdot
-    return t1, efficiency, mdot, work_output
+    return df, t1, efficiency, mdot, work_output
 
 def open_fwh(T1=None, P1=None, P5= None, irreversible=None):
     p1 = P1
@@ -360,13 +354,15 @@ def open_fwh(T1=None, P1=None, P5= None, irreversible=None):
     eta = (wtdot-wpdot)/(qindot)
     efficiency = eta*100
     work_output = (wtdot-wpdot)*mdot
-    return t1, efficiency, mdot, work_output
+    return df, t1, efficiency, mdot, work_output
 
-def open_close_fwh(T1, P1, P6):
-    # State 1 is superheated vapor at 8MPa, 480C.
-    p1=8.0
+def open_close_fwh(T1=None, P1=None, P6= None, irreversible=None):
+    scale_factor = 2 # room for optimization
+    etat = 0.85
+    p1 = P1
 
-    if T1:
+    # superheated
+    if T1!=None:
         t1 = T1
         h1 = pt2h(p1,t1)
         s1 = pt2s(p1,t1)
@@ -374,37 +370,75 @@ def open_close_fwh(T1, P1, P6):
     else:
         t1 = px2t(p1, 1)
         h1 = px2h(p1, 1)          # h1 = 2758.0    From table A-3  kj/kg
-        s1 = px2s(p1, 1)
+        s1 = px2s(p1, 1)          # s1 = 5.7432    From table A-3  kj/kg.k
 
-    # State 2 is fixed by p2 =2.0MPa and the specific entropy s2, which is the same as that of state 1
-    p2= P1/2
-    s2=s1
-    h2 = ps2h(p2,s2)
-    t2=ps2t(p2,s2)
+    if irreversible:
+        p2= P1/scale_factor
+        s2s=s1
+        h2s =ps2h(p2,s2s)
+        h2=h1-etat*(h1-h2s)
+        s2=ph2s(p2,h2)
+        t2=ph2t(p2,h2)
 
-    # State 3  is fixed by p2 =0.7MPa and the specific entropy s2, which is the same as that of state 1
-    p3= p2/2
-    s3=s1
-    h3 = ps2h(p3,s3)
-    t3=ps2t(p3,s3)
+        p3= p2/scale_factor
+        s3s = s2
+        h3s =ps2h(p3,s3s)
+        h3=h2-etat*(h2-h3s)
+        s3=ph2s(p3,h3)
+        t3=ph2t(p3,h3)
 
-    # State 4 is superheated vapor at 0.7 MPa, 440C.
-    p4 = p3
-    t4 = T1-30
-    h4 = pt2h(p4,t4)                                                                      # in kj/kg
-    s4 =pt2s(p4,t4)
+        # state 4
+        p4 = p3
+        t4 = t1-30
+        h4 = pt2h(p4,t4)                                                                      # in kj/kg
+        s4 =pt2s(p4,t4)
 
-    # State 5 : p5 =0.3MPa and s5 = s4
-    p5= p4/2
-    s5=s4
-    h5 =ps2h(p5,s5)
-    t5=ps2t(p5,s5)
+        # state 5
+        p5= p4/scale_factor
+        s5s=s4
+        h5s =ps2h(p5,s5s)
+        h5=h4-etat*(h4-h5s)
+        s5 =ph2s(p5,h5)
+        t5 =ph2t(p5,h5)
 
-    # State 6: p6=0.008MPA, s6= s4
-    p6= P6
-    s6=s4
-    h6 =ps2h(p6,s6)
-    t6 =ps2t(p6,s6)
+        # state 6
+        p6 = P6
+        s6s = s5
+        h6s =ps2h(p6,s6s)
+        h6 = h5-etat*(h5-h6s)
+        s6 =ph2s(p6,h6)
+        t6 =ph2t(p6,h6)
+
+    else:
+        # State 2 is fixed by p2 =2.0MPa and the specific entropy s2, which is the same as that of state 1
+        p2= P1/scale_factor
+        s2=s1
+        h2 = ps2h(p2,s2)
+        t2=ps2t(p2,s2)
+
+        # State 3  is fixed by p2 =0.7MPa and the specific entropy s2, which is the same as that of state 1
+        p3= p2/scale_factor
+        s3=s1
+        h3 = ps2h(p3,s3)
+        t3=ps2t(p3,s3)
+
+        # State 4 is superheated vapor at 0.7 MPa, 440C.
+        p4 = p3
+        t4 = t1-30
+        h4 = pt2h(p4,t4)                                                                      # in kj/kg
+        s4 =pt2s(p4,t4)
+
+        # State 5 : p5 =0.3MPa and s5 = s4
+        p5= p4/scale_factor
+        s5=s4
+        h5 =ps2h(p5,s5)
+        t5=ps2t(p5,s5)
+
+        # State 6: p6=0.008MPA, s6= s4
+        p6= P6
+        s6=s5
+        h6 =ps2h(p6,s6)
+        t6 =ps2t(p6,s6)
 
     # State 7 : p7=0.008MP Saturated water at the condenser exit
     p7= p6
@@ -433,19 +467,28 @@ def open_close_fwh(T1, P1, P6):
 
     # State 11: the feedwater exiting the closed heater
     p11= p1
-    t11= 220
+
+    # t11 = t10
+
+    t11= (t2 + t10)/2 # assume thermal equilibrium
+
+    print("Critical Temp:", px2t(p11,1) )
+    if t11 > px2t(p11,1):
+        t11 =  px2t(p11,1)-10
+
+    # problem: sometimes become supercritical
     h11 = pt2h(p11,t11)                                                                      # in kj/kg
-    s11 =pt2s(p11,t11)
+    s11 = pt2s(p11,t11)
 
     # State 12: the condensate leaving the closed heater is saturated at 2 MPa.
-    p12= p9
+    p12= p2
     t12=px2t(p12,0)
     h12=px2h(p12,0)
     s12=px2s(p12,0)
 
     # State 13:  the fluid passing through the trap undergoes a throttling process
-    p13= p12
-    h13=h12
+    p13 = p5
+    h13 = h12
     s13=ph2s(p13,h13)
     t13=ph2t(p13,h13)
 
@@ -469,21 +512,28 @@ def open_close_fwh(T1, P1, P6):
     ydash = (h11-h10)/(h2-h12)                          # the fraction of the total flow diverted to the closed heater
     ydashdash = ((1-ydash)*h8+ydash*h13-h9)/(h8-h5)     # the fraction of the total flow diverted to the open heater
     print(ydash, ydashdash)
-    # mdot = 113.37
 
+    Wcycledot = 25.0    # the net power output of the cycle in MW
     # Part(a)
     wt1dot = (h1-h2) + (1-ydash)*(h2-h3)                       # The work developed by the first turbine per unit of mass entering in kj/kg
+
     wt2dot = (1-ydash)*(h4-h5) + (1-ydash-ydashdash)*(h5-h6)   # The work developed by the second turbine per unit of mass in kj/kg
+    wtdot = wt1dot + wt2dot
 
+    print("Work by turbine: ", wtdot)
     wp1dot = (1-ydash-ydashdash)*(h8-h7)                # The work for the first pump per unit of mass in kj/kg
-    wp2dot = h10-h9                                     # The work for the second pump per unit of mass in kj/kg
-
+    wp2dot = h10-h9
+    wpdot = wp1dot+wp2dot                                  # The work for the second pump per unit of mass in kj/kg
+    print("Work by pump: ", wpdot)
+    mdot = (Wcycledot*10**3)/(wtdot-wpdot)
     qindot = (h1-h11) + (1-ydash)*(h4-h3)  # The total heat added expressed on the basis of a unit of mass entering the first   turbine
 
-    eta = (wt1dot+wt2dot-wp1dot-wp2dot)/qindot  # thermal efficiency
+    print("Qin: ",qindot)
+    eta = (wtdot - wpdot )/qindot  # thermal efficiency
 
     efficiency = 100*eta
+    print(efficiency)
     work_output = (wt1dot+wt2dot-wp1dot-wp2dot)*mdot
     # work_output = wt2dot*mdot
 
-    return(efficiency, work_output)
+    return df, t1, efficiency, mdot, work_output
