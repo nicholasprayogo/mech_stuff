@@ -356,6 +356,168 @@ def open_fwh(T1=None, P1=None, P5= None, irreversible=None):
     work_output = (wtdot-wpdot)*mdot
     return df, t1, efficiency, mdot, work_output
 
+def open_fwh_hx(T1=None, P1=None, P5= None, irreversible=None):
+    p1 = P1
+
+    # superheated
+    if T1!=None:
+        t1 = T1
+        h1 = pt2h(p1,t1)
+        s1 = pt2s(p1,t1)
+
+    else:
+        t1 = px2t(p1, 1)
+        h1 = px2h(p1, 1)          # h1 = 2758.0    From table A-3  kj/kg
+        s1 = px2s(p1, 1)          # s1 = 5.7432    From table A-3  kj/kg.k
+
+    # State  2
+    p2 = p1/4 # in MPa
+
+    # state5 = [p2, px2t(p3,0), px2h(p3,0), px2s(p3,0)]
+    # State 4
+    p4 = p2/4
+
+    p5 = P5
+
+    if irreversible:
+        # state 2
+        s2s=s1
+        h2s =ps2h(p2,s2s)
+        etat1=0.85
+        h2=h1-etat1*(h1-h2s)
+        s2=ph2s(p2,h2)
+        t2=ph2t(p2,h2)
+
+        # state 3
+        t3 = t1-20
+        p3 = p2
+        h3 =pt2h(p3,t3)
+        s3 =pt2s(p3,t3)
+
+        # state 4
+        s4s=s3
+        h4s =ps2h(p4,s4s)
+        etat2=etat1
+        h4=h3-etat2*(h3-h4s)
+        s4 =ph2s(p4,h4)
+        t4 =ph2t(p4,h4)
+
+        # state 4
+        s5s=s4
+        h5s =ps2h(p5,s5s)
+        etat2=etat1
+        h5=h4-etat2*(h4-h5s)
+        s5 =ph2s(p5,h5)
+        t5 =ph2t(p5,h5)
+
+    else:
+        # state 2
+        s2 = s1
+        t2 = ps2t(p2, s2)
+        h2 = ps2h(p2, s2)
+
+        # state 3
+        t3 = t1-20
+        p3 = p2
+        h3 =pt2h(p3,t3)
+        s3 =pt2s(p3,t3)
+
+        # state 4
+        s4 = s3
+        t4 = ps2t(p4,s4)
+        h4 = ps2h(p4, s4)
+
+        # state 4
+        s5 = s4
+        t5 = ps2t(p5,s5)
+        h5 = ps2h(p5, s5)
+
+    p6 = p5
+    t6 = px2t(p6, 0)
+    h6 = px2h(p6, 0)  # kj/kg
+    s6 = px2s(p6, 0)
+
+    # p7 = p4
+
+    p7 = p4
+    s7= s6 # isentropic compression
+    t7 = ps2t(p7,s7)
+    h7 = ps2h(p7,s7)
+
+    p8 = p7
+    t8 = px2t(p8, 0) # saturated water
+    h8 = px2h(p8, 0)
+    s8 = px2s(p8, 0)
+
+    p10 = 1.579
+
+    p9 = p10
+    s9=s8
+    h9 =ps2h(p9,s9)
+    t9=ps2t(p9,s9)
+
+    t10 = t9 + 40
+    h10=pt2h(p10,t10)
+    s10=pt2s(p10,t10)
+    # Part(a)
+    # Mass and energy rate balances for control volumes
+    # around the turbine and pump give, respectively
+    df = pd.DataFrame(columns=["Temperature (C)","Pressure (MPa)","Enthalpy (kJ/kg)","Entropy (kJ/kg*K)"])
+
+    df.loc[1] = t1,p1,h1,s1
+    df.loc[2] = t2,p2,h2,s2
+    df.loc[3] = t3,p3,h3,s3
+    df.loc[4] = t4,p4,h4,s4
+    df.loc[5] = t5,p5,h5,s5
+    df.loc[6] = t6,p6, h6,s6
+    df.loc[7] = t7,p7, h7,s7
+    df.loc[8] = t8,p8, h8,s8
+    df.loc[9] = t9,p9, h9,s9
+    df.loc[10] = t10,p10, h10,s10
+    print(df)
+
+    ydash = (h8-h7)/(h4-h7)
+
+    y =(h4*ydash + (1-ydash)*h5 - h1)/(h3-h2)
+
+    wtdot1 = h1-h2
+
+    wtdot2 = (h3-h4)
+
+    wtdot3 = (1-ydash)*(h4-h5)
+
+    wtdot = wtdot1+wtdot2 + wtdot3
+
+    # turbine
+    # wtdot = (h1-h2)+ (h3-h4) + (h4-h5)
+
+    # print("Power from turbine(kJ/kg): ", wtdot)
+    print("Power from turbine(kwh/kg): ", wtdot)
+    # print("Power from turbine(kJ/s (kW)): ", wtdot*mdot)
+
+    # pump
+    wpdot = (h9-h8) + (h7-h6)
+
+    print("Power into pump: ", wpdot)
+    # print("net work", (wtdot-wpdot)*mdot)
+    qindot = (h1-h9)+(h3-h2)
+    qindot2 = h10-h9
+
+    # effective Qa
+    qindot2 = 187.264
+    print("Qin: ", qindot)
+    Wcycledot = 30.0    # the net power output of the cycle in MW
+
+    mdot = (Wcycledot*10**3)/(wtdot-wpdot)
+
+    mdot2 = 113.37
+    # thermal efficiency
+    eta = ((wtdot-wpdot)/mdot)/((qindot)/mdot+qindot2/mdot2)
+    efficiency = eta*100
+    work_output = (wtdot-wpdot)*mdot
+    print("Qin by heat exchanger:",qindot2)
+    return df, t1, efficiency, mdot, work_output
+
 def open_close_fwh(T1=None, P1=None, P6= None, irreversible=None):
     scale_factor = 2 # room for optimization
     etat = 0.85
