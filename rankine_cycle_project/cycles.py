@@ -92,7 +92,7 @@ def basic_rankine(T1=None, P1=None,P2=None, irreversible=None):
     # through the boiler is determined using mass and energy rate balances as
     qindot = h1-h4
     print("Qin: ", qindot)
-    Wcycledot = 25.0    # the net power output of the cycle in MW
+    Wcycledot = 30.0    # the net power output of the cycle in MW
     mdot = (Wcycledot*10**3)/(wtdot-wpdot)       # mass flow rate in kg/s
 
     # thermal efficiency
@@ -198,7 +198,7 @@ def reheat(T1=None, P1=None, P4= None, irreversible=None):
     # print("net work", (wtdot-wpdot)*mdot)
     qindot = (h1-h6)+(h3-h2)
     print("Qin: ", qindot)
-    Wcycledot = 25.0    # the net power output of the cycle in MW
+    Wcycledot = 30.0    # the net power output of the cycle in MW
 
     mdot = (Wcycledot*10**3)/((h1-h2)+(h3-h4)-(h6-h5))
     # thermal efficiency
@@ -347,7 +347,7 @@ def open_fwh(T1=None, P1=None, P5= None, irreversible=None):
     # print("net work", (wtdot-wpdot)*mdot)
     qindot = (h1-h9)+(h3-h2)
     print("Qin: ", qindot)
-    Wcycledot = 25.0    # the net power output of the cycle in MW
+    Wcycledot = 30.0    # the net power output of the cycle in MW
 
     mdot = (Wcycledot*10**3)/(wtdot-wpdot)
     # thermal efficiency
@@ -513,7 +513,7 @@ def open_close_fwh(T1=None, P1=None, P6= None, irreversible=None):
     ydashdash = ((1-ydash)*h8+ydash*h13-h9)/(h8-h5)     # the fraction of the total flow diverted to the open heater
     print(ydash, ydashdash)
 
-    Wcycledot = 25.0    # the net power output of the cycle in MW
+    Wcycledot = 30.0    # the net power output of the cycle in MW
     # Part(a)
     wt1dot = (h1-h2) + (1-ydash)*(h2-h3)                       # The work developed by the first turbine per unit of mass entering in kj/kg
 
