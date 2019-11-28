@@ -18,6 +18,5 @@ for index, load_data in enumerate([load8,load10,load12,load14]):
     plt.xlabel("Corrected Fringe Order")
     plt.ylabel("Strain Difference")
     plt.legend()
-    plt.show()
-
     plt.savefig(fname="load{}.png".format(8+index*2))
+    plt.show()
