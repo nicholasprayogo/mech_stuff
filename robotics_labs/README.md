@@ -13,16 +13,21 @@ This lab project is about obstacle avoidanc and motion control of a 3-wheel-driv
 Here, I was tasked to build an operational space inverse dynamics controller with feedback linearization. The system's ultimate goal is to compute the required joint torques based on the operational space (end-effector) reference trajectories.
 
 First, the outer loop control variable u is made linear with respect to the operational space feedback variables using PD controller gains.  
+
 <img src="assets/feedback_linear.png" alt="drawing" width="150"/>
 
 Then, joint accelerations are related to the end effector acceleration based on the inverse analytical Jacobian.  
+
 <img src="assets/inverse_dynamics.png" alt="drawing" width="200"/>
 
 The output torque vector (Q), with the dynamics equation of a robotic manipulator is
+
 <img src="assets/manipulator_dynamics.png" alt="drawing" width="200"/>
 
 Thus, in terms of the end effector feedback and acceleration, accounting for the steps above, the output torque vector would be    
+
 <img src="assets/output_torque.png" alt="drawing" width="300"/>
 
 This can be represented as a block diagram as such:   
+
 <img src="assets/block_diagram.png" alt="drawing" width="500"/>
