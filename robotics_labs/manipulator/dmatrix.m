@@ -1,0 +1,9 @@
+D(1,1) = I1yy + I3yy*cos(q2 + q3)^2 + I2yy*cos(q2)^2 + ml3*cos(q1)^2*(lc3*cos(q2 + q3) + l2*cos(q2))^2 + ml3*sin(q1)^2*(lc3*cos(q2 + q3) + l2*cos(q2))^2 + lc2^2*ml2*cos(q1)^2*cos(q2)^2 + lc2^2*ml2*cos(q2)^2*sin(q1)^2
+D(1,2) = 0
+D(1,3) = 0
+D(2,1) = 0
+D(2,2) = I2zz + I3zz + l2^2*ml3 + lc2^2*ml2 + lc3^2*ml3 + 2*l2*lc3*ml3*cos(q3)
+D(2,3) = I3zz + lc3^2*ml3 + l2*lc3*ml3*cos(q3)
+D(3,1) = 0
+D(3,2) = I3zz + lc3^2*ml3 + l2*lc3*ml3*cos(q3)
+D(3,3) = I3zz + lc3^2*ml3
